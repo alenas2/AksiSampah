@@ -1,0 +1,72 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Fortify\Features;
+use Livewire\Volt\Volt;
+use App\Http\Controllers\Auth\LoginRegisterController;
+
+Route::get('/login', [LoginRegisterController::class, 'showWargaForm'])->name('login');
+Route::post('/login', [LoginRegisterController::class, 'wargaLogin'])->name('login.store');
+Route::get('/petugas/login', [LoginRegisterController::class, 'showPetugasForm'])->name('petugas.login');
+Route::post('/petugas/login', [LoginRegisterController::class, 'petugasLogin'])->name('petugas.login.store');
+Route::get('/petugas/register', [LoginRegisterController::class, 'showPetugasRegisterForm'])->name('petugas.register');
+Route::post('/petugas/register', [LoginRegisterController::class, 'petugasRegister'])->name('petugas.register.store');
+Route::get('/petugas/forgot-password', [LoginRegisterController::class, 'showPetugasForgotPasswordForm'])->name('petugas.password.request');
+Route::post('/petugas/forgot-password', [LoginRegisterController::class, 'petugasForgotPassword'])->name('petugas.password.email');
+
+Route::get('/', function () {
+    return redirect()->route('register');
+})->name('home');
+
+Route::view('/dashboardpetugas', 'dashboardpetugas')->name('petugas.dashboard');
+
+Route::view('/petugas/daftar-laporan', 'daftar-laporan')->name('petugas.daftar');
+Route::view('/petugas/jadwal-pengangkutan', 'jadwal-pengangkutan')->name('petugas.jadwal');
+
+Route::middleware(['auth'])->group(function () {
+    Route::redirect('settings', 'settings/profile');
+
+    Route::get('dashboard', function () {
+        $user = Auth::user();
+        if ($user->role === 'warga') {
+            return view('dashboardwarga');
+        } elseif ($user->role === 'petugas') {
+            return view('dashboardpetugas');
+        }
+        return redirect('/');
+    })->name('dashboard');
+    Volt::route('settings/profile', 'settings.profile')->name('profile.edit');
+    Volt::route('settings/password', 'settings.password')->name('user-password.edit');
+    Volt::route('settings/appearance', 'settings.appearance')->name('appearance.edit');
+
+    Volt::route('settings/two-factor', 'settings.two-factor')
+        ->middleware(
+            when(
+                Features::canManageTwoFactorAuthentication()
+                    && Features::optionEnabled(Features::twoFactorAuthentication(), 'confirmPassword'),
+                ['password.confirm'],
+                [],
+            ),
+        )
+        ->name('two-factor.show');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboardwarga', function () {
+        return view('dashboardwarga');
+    })->name('warga.dashboard');
+});
+
+Route::get('/warga/laporan', function () {
+    return view('laporanwarga');
+})->name('warga.laporan');
+
+Route::post('/warga/laporan', function () {
+    return redirect()
+        ->route('warga.dashboard')
+        ->with('success', 'Laporan sampah berhasil dikirim dan akan diproses petugas.');
+})->name('warga.laporan.store');
+
+Volt::route('/login', 'auth.login')->name('login');
+Volt::route('/register', 'auth.register')->name('register');
